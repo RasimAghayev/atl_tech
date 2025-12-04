@@ -1,0 +1,35 @@
+/.idea
+/.vscode
+/db/redis
+/db/postgres
+.idx
+.vscode/*
+
+/src/be/vendor/
+/src/be/node_modules/
+/src/be/npm-debug.log
+/src/be/yarn-error.log
+
+# Laravel 4 specific
+/src/be/bootstrap/compiled.php
+/src/be/App/storage/
+
+# Laravel 5 & Lumen specific
+/src/be/public/storage
+/src/be/public/hot
+
+# Laravel 5 & Lumen specific with changed public path
+/src/be/public_html/storage
+/src/be/public_html/hot
+
+/src/be/storage/*.key
+/src/be/.env
+/src/be/Homestead.yaml
+/src/be/Homestead.json
+/src/be//.vagrant
+/src/be/.phpunit.result.cache
+
+
+# Local env files
+/db
+.env

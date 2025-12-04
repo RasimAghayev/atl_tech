@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "be_esds",
+      "Group": "ESDS",
+      "Port": 5432,
+      "Username": "postgres",
+      "Host": "pgsql_al",
+      "SSLMode": "prefer",
+      "MaintenanceDB": "postgres"
+    }
+  }
+}

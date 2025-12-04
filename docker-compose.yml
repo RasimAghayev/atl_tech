@@ -1,0 +1,199 @@
+name: "atltechcallcenterapi"
+networks:
+  ATLTechCallCenterAPI:
+    name: ATLTechCallCenterAPI
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: server/nginx/Dockerfile
+    container_name: nginx_al
+    depends_on:
+      - pgsql
+      - rabbitmq
+      - redis
+      - php
+    ports:
+      - "${APP_PORT:-80}:80"
+      - "${APP_PORT_SSL:-443}:443"
+    env_file:
+      - .env
+    volumes:
+      - ./src/be:/var/www/html/be:delegated
+      - ./.env:/var/www/html/be/.env:ro
+    networks:
+      - ATLTechCallCenterAPI
+
+  php:
+    build:
+      context: .
+      dockerfile: server/php/Dockerfile
+    container_name: php_al
+    volumes:
+      - ./src/be:/var/www/html/be:delegated
+      - ./.env:/var/www/html/be/.env
+      - ./docker-include.txt:/var/www/html/docker-include.txt:ro
+    env_file:
+      - .env
+    networks:
+      - ATLTechCallCenterAPI
+
+  composer:
+    build:
+      context: .
+      dockerfile: server/php/Dockerfile
+    container_name: composer
+    volumes:
+      - ./src/be:/var/www/html/be:delegated
+      - ./.env:/var/www/html/be/.env:ro
+    working_dir: /var/www/html/be
+    entrypoint: ["composer"]
+    env_file:
+      - .env
+    networks:
+      - ATLTechCallCenterAPI
+
+  artisan:
+    build:
+      context: .
+      dockerfile: server/php/Dockerfile
+    container_name: artisan
+    env_file:
+      - .env
+    volumes:
+      - ./src/be:/var/www/html/be:delegated
+      - ./.env:/var/www/html/be/.env
+    working_dir: /var/www/html/be
+    entrypoint: ["php", "artisan"]
+    networks:
+      - ATLTechCallCenterAPI
+
+  phpunit:
+    build:
+      context: .
+      dockerfile: server/php/Dockerfile
+    container_name: phpunit
+    env_file:
+      - .env
+    volumes:
+      - ./src/be:/var/www/html/be
+    working_dir: /var/www/html/be
+    entrypoint: ["/var/www/html/be/vendor/bin/phpunit"]
+    networks:
+      - ATLTechCallCenterAPI
+
+  pgsql:
+    build:
+      context: .
+      dockerfile: server/postgres/Dockerfile
+    container_name: pgsql_al
+    restart: unless-stopped
+    shm_size: 256mb
+    ports:
+      - "${DB_PORT:-6432}:5432"
+    volumes:
+      - ./db/postgres:/var/lib/postgresql/data
+      - ./server/postgres/init:/docker-entrypoint-initdb.d:ro
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-atltechcallcenterapi_db}
+      POSTGRES_USER: ${DB_USERNAME:-atltechcallcenterapi_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      # Performance tuning
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
+      POSTGRES_WAL_BUFFERS: 16MB
+      POSTGRES_DEFAULT_STATISTICS_TARGET: 100
+    deploy:
+       resources:
+         limits:
+           memory: 1G
+           cpus: '0.5'
+         reservations:
+           memory: 512M
+           cpus: '0.25'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-atltechcallcenterapi_user} -d ${DB_DATABASE:-atltechcallcenterapi_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - ATLTechCallCenterAPI
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_al
+    restart: unless-stopped
+    command: redis-server --appendonly yes --appendfsync everysec --save 20 1 --loglevel warning
+    ports:
+      - "${REDIS_PORT:-8002}:6379"
+    volumes:
+      - ./db/redis:/data
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - ATLTechCallCenterAPI
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq_al
+    restart: unless-stopped
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    volumes:
+      - ./db/rabbitmq:/var/lib/rabbitmq
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ATLTechCallCenterAPI
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
