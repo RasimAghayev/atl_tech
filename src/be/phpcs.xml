@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="ATLTechCallCenterAPI" xsi:noNamespaceSchemaLocation="vendor/squizlabs/php_codesniffer/phpcs.xsd">
+    <description>ATLTechCallCenterAPI PHP Coding Standards</description>
+
+    <!-- Files to check -->
+    <file>App/</file>
+    <file>tests/</file>
+    <file>database/</file>
+
+    <!-- Exclude directories -->
+    <exclude-pattern>vendor/</exclude-pattern>
+    <exclude-pattern>storage/</exclude-pattern>
+    <exclude-pattern>bootstrap/cache/</exclude-pattern>
+    <exclude-pattern>public/</exclude-pattern>
+    <exclude-pattern>*.blade.php</exclude-pattern>
+
+    <!-- Base rules -->
+    <rule ref="PSR12">
+        <!-- Exclude some rules that conflict with Laravel conventions -->
+        <exclude name="PSR1.Classes.ClassDeclaration.MissingNamespace"/>
+        <exclude name="PSR12.Files.FileHeader.SpacingAfterBlock"/>
+    </rule>
+
+    <!-- Additional rules -->
+    <rule ref="Generic.PHP.DisallowAlternativePHPTags"/>
+    <rule ref="Generic.PHP.DisallowShortOpenTag"/>
+    <rule ref="Generic.WhiteSpace.DisallowTabIndent"/>
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="150"/>
+        </properties>
+    </rule>
+
+    <!-- Naming conventions -->
+    <rule ref="Generic.NamingConventions.UpperCaseConstantName"/>
+    <rule ref="Generic.PHP.LowerCaseConstant"/>
+    <rule ref="Generic.PHP.LowerCaseKeyword"/>
+    <rule ref="Generic.PHP.LowerCaseType"/>
+
+    <!-- Comments -->
+    <rule ref="Squiz.Commenting.FunctionComment"/>
+    <rule ref="Squiz.Commenting.ClassComment"/>
+
+    <!-- Arrays -->
+    <rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
+
+    <!-- Security -->
+    <rule ref="Generic.PHP.ForbiddenFunctions">
+        <properties>
+            <property name="forbiddenFunctions" type="array">
+                <element key="eval" value="null"/>
+                <element key="exec" value="null"/>
+                <element key="passthru" value="null"/>
+                <element key="shell_exec" value="null"/>
+                <element key="system" value="null"/>
+                <element key="var_dump" value="null"/>
+                <element key="print_r" value="null"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Show progress -->
+    <arg name="colors"/>
+    <arg value="p"/>
+    
+    <!-- Use cache -->
+    <arg name="cache" value=".phpcs-cache"/>
+    
+    <!-- PHP version -->
+    <config name="php_version" value="80300"/>
+</ruleset>

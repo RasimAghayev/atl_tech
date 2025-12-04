@@ -1,0 +1,27 @@
+includes:
+    - vendor/nunomaduro/larastan/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - App
+        - tests
+    
+    # Ignore specific Laravel directories
+    excludePaths:
+        - App/Http/Middleware/Authenticate.php
+        - App/Http/Middleware/RedirectIfAuthenticated.php
+        - App/Exceptions/Handler.php
+        - tests/CreatesApplication.php
+    
+    # Allow dynamic properties (useful for Laravel models)
+    checkDynamicProperties: false
+    
+    # Laravel specific ignores
+    ignoreErrors:
+        - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Builder#'
+        - '#Access to an undefined property Illuminate\\Database\\Eloquent\\Model#'
+        - '#Call to an undefined method Illuminate\\Contracts\\Auth\\Authenticatable#'
+        - '#Cannot call method .* on .* \| null#'
+        - identifier: missingType.iterableValue
+        - identifier: missingType.generics
