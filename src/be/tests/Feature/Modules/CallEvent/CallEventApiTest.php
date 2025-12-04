@@ -21,17 +21,23 @@ class CallEventApiTest extends TestCase
         parent::setUp();
 
         config(['call-event.api_token' => $this->validToken]);
+    }
 
-        // Mock RabbitMQ publisher
+    /**
+     * Create mock for EventPublisher that expects to be called
+     */
+    private function mockEventPublisher(): void
+    {
         $this->mock(EventPublisherInterface::class, function (MockInterface $mock) {
-            $mock->shouldReceive('publish')
-                ->once()
+            $mock->expects('publish')
                 ->andReturnNull();
         });
     }
 
     public function test_can_submit_call_started_event_successfully(): void
     {
+        $this->mockEventPublisher();
+
         $payload = [
             'call_id' => 'CALL-12345',
             'caller_number' => '+994501234561',
@@ -54,6 +60,8 @@ class CallEventApiTest extends TestCase
 
     public function test_can_submit_call_ended_event_with_duration(): void
     {
+        $this->mockEventPublisher();
+
         $payload = [
             'call_id' => 'CALL-67890',
             'caller_number' => '+994501234563',
@@ -82,13 +90,14 @@ class CallEventApiTest extends TestCase
             'callee_number' => '+994551234566',
             'event_type' => 'call_ended',
             'timestamp' => '2025-12-04 10:30:00',
+            // Missing duration - should fail validation
         ];
 
         $response = $this->withToken($this->validToken)
             ->postJson('/api/v1/call-events', $payload);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['duration']);
+            ->assertJsonPath('error.duration', fn ($value) => !empty($value));
     }
 
     public function test_validation_fails_with_invalid_phone_number(): void
@@ -105,7 +114,7 @@ class CallEventApiTest extends TestCase
             ->postJson('/api/v1/call-events', $payload);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['caller_number']);
+            ->assertJsonPath('error.caller_number', fn ($value) => !empty($value));
     }
 
     public function test_validation_fails_with_invalid_event_type(): void
@@ -122,7 +131,7 @@ class CallEventApiTest extends TestCase
             ->postJson('/api/v1/call-events', $payload);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['event_type']);
+            ->assertJsonPath('error.event_type', fn ($value) => !empty($value));
     }
 
     public function test_authentication_fails_without_token(): void
@@ -163,12 +172,10 @@ class CallEventApiTest extends TestCase
             ->postJson('/api/v1/call-events', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors([
-                'call_id',
-                'caller_number',
-                'callee_number',
-                'event_type',
-                'timestamp',
-            ]);
+            ->assertJsonPath('error.call_id', fn ($value) => !empty($value))
+            ->assertJsonPath('error.caller_number', fn ($value) => !empty($value))
+            ->assertJsonPath('error.callee_number', fn ($value) => !empty($value))
+            ->assertJsonPath('error.event_type', fn ($value) => !empty($value))
+            ->assertJsonPath('error.timestamp', fn ($value) => !empty($value));
     }
 }

@@ -28,7 +28,7 @@ class CallEventRequest extends FormRequest
             'event_type' => ['required', 'string', Rule::in(CallEventTypeEnum::values())],
             'timestamp' => ['required', 'date', 'date_format:Y-m-d H:i:s'],
             'duration' => [
-                Rule::requiredIf(fn () => $this->input('event_type') === CallEventTypeEnum::CALL_ENDED->value),
+                'required_if:event_type,'.CallEventTypeEnum::CALL_ENDED->value,
                 'nullable',
                 'integer',
                 'min:0',
