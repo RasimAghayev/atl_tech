@@ -1,0 +1,123 @@
+{
+	"info": {
+		"_postman_id": "f2399bc4-452d-4260-a2c8-d7d938057a5a",
+		"name": "atl_tech",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "1965733",
+		"_collection_link": "https://projects-rasimaghayev.postman.co/workspace/My-Workspace~4e865d24-8877-4e72-8c5b-53e91c4b2264/collection/1965733-f2399bc4-452d-4260-a2c8-d7d938057a5a?action=share&source=collection_link&creator=1965733"
+	},
+	"item": [
+		{
+			"name": "call-events",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// ================= TIMESTAMP =================\r",
+							"function getDateTime() {\r",
+							"    const d = new Date();\r",
+							"    return d.getFullYear() + \"-\" +\r",
+							"        (\"0\" + (d.getMonth() + 1)).slice(-2) + \"-\" +\r",
+							"        (\"0\" + d.getDate()).slice(-2) + \" \" +\r",
+							"        (\"0\" + d.getHours()).slice(-2) + \":\" +\r",
+							"        (\"0\" + d.getMinutes()).slice(-2) + \":\" +\r",
+							"        (\"0\" + d.getSeconds()).slice(-2);\r",
+							"}\r",
+							"pm.environment.set(\"call_timestamp\", getDateTime());\r",
+							"\r",
+							"// ================= EVENT TYPE =================\r",
+							"const eventTypes = [\r",
+							"    \"call_started\",\r",
+							"    \"call_ended\",\r",
+							"    \"call_held\",\r",
+							"    \"call_transferred\",\r",
+							"    \"call_missed\",\r",
+							"    \"call_answered\"\r",
+							"];\r",
+							"pm.environment.set(\"event_type\", eventTypes[Math.floor(Math.random() * eventTypes.length)]);\r",
+							"\r",
+							"// ================= PHONE GENERATOR =================\r",
+							"const prefixes = [\"10\",\"50\",\"51\",\"55\",\"60\",\"70\",\"77\",\"99\"]; \r",
+							"\r",
+							"function randomDigit(min = 0, max = 9) {\r",
+							"  return Math.floor(Math.random() * (max - min + 1)) + min;\r",
+							"}\r",
+							"\r",
+							"// 3 rəqəm, 1-9 ilə başlayır\r",
+							"function block1() {\r",
+							"  return randomDigit(1,9) + \"\" + randomDigit() + \"\" + randomDigit();\r",
+							"}\r",
+							"\r",
+							"// 2 rəqəm\r",
+							"function block2() {\r",
+							"  return randomDigit() + \"\" + randomDigit();\r",
+							"}\r",
+							"\r",
+							"function generatePhone() {\r",
+							"  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];\r",
+							"  return \"+994\" + prefix + block1() + block2() + block2();\r",
+							"}\r",
+							"\r",
+							"// Caller =/= Callee\r",
+							"function uniquePhone(except) {\r",
+							"  let p;\r",
+							"  do {\r",
+							"    p = generatePhone();\r",
+							"  } while (p === except);\r",
+							"  return p;\r",
+							"}\r",
+							"\r",
+							"// Set phone numbers\r",
+							"const caller = generatePhone();\r",
+							"const callee = uniquePhone(caller);\r",
+							"\r",
+							"pm.environment.set(\"caller\", caller);\r",
+							"pm.environment.set(\"callee\", callee);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer ce_epJBbHUgBaCRzj5JtY7PyrDAKFEtX1KvZ3KIljLS",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"call_id\": \"CALL-{{$timestamp}}\",\r\n  \"caller_number\": \"{{caller}}\",\r\n  \"callee_number\": \"{{callee}}\",\r\n  \"event_type\": \"{{event_type}}\",\r\n  \"timestamp\": \"{{call_timestamp}}\"\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/v1/call-events",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"call-events"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

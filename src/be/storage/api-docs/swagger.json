@@ -1,0 +1,260 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Call Event API",
+        "version": "1.0.0",
+        "description": "API for receiving and processing call events from SIP server",
+        "contact": {
+            "email": "api@example.com"
+        }
+    },
+    "servers": [
+        {
+            "url": "http:\/\/localhost:8000\/api",
+            "description": "API Server"
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "token",
+                "description": "Enter your API token"
+            }
+        },
+        "schemas": {
+            "CallEventResource": {
+                "type": "object",
+                "properties": {
+                    "call_id": {
+                        "type": "integer",
+                        "description": "Unique identifier"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "payload": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Creation timestamp"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Last update timestamp"
+                    }
+                }
+            },
+            "CallEventCollection": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#\/components\/schemas\/CallEventResource"
+                        }
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "first": {
+                                "type": "string",
+                                "nullable": true
+                            },
+                            "last": {
+                                "type": "string",
+                                "nullable": true
+                            },
+                            "prev": {
+                                "type": "string",
+                                "nullable": true
+                            },
+                            "next": {
+                                "type": "string",
+                                "nullable": true
+                            }
+                        }
+                    },
+                    "meta": {
+                        "type": "object",
+                        "properties": {
+                            "current_page": {
+                                "type": "integer"
+                            },
+                            "from": {
+                                "type": "integer",
+                                "nullable": true
+                            },
+                            "last_page": {
+                                "type": "integer"
+                            },
+                            "path": {
+                                "type": "string"
+                            },
+                            "per_page": {
+                                "type": "integer"
+                            },
+                            "to": {
+                                "type": "integer",
+                                "nullable": true
+                            },
+                            "total": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            },
+            "StoreCallEventRequest": {
+                "type": "object",
+                "properties": {
+                    "call_id": {
+                        "type": "integer",
+                        "description": "Unique identifier"
+                    },
+                    "caller_number": {
+                        "type": "string"
+                    },
+                    "callee_number": {
+                        "type": "string"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "duration": {
+                        "type": "integer",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "call_id",
+                    "caller_number",
+                    "callee_number",
+                    "event_type",
+                    "timestamp"
+                ]
+            },
+            "ValidationError": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "The given data was invalid."
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "example": {
+                            "call_id": [
+                                "The call id field is required."
+                            ],
+                            "event_type": [
+                                "The selected event type is invalid."
+                            ]
+                        }
+                    }
+                }
+            },
+            "UnauthorizedError": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "example": "Unauthorized"
+                    }
+                }
+            },
+            "InternalServerError": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "example": "An unexpected error occurred."
+                    }
+                }
+            }
+        }
+    },
+    "paths": {
+        "\/api\/v1\/call-events": {
+            "post": {
+                "summary": "Receive call event from SIP server",
+                "description": "Accepts call event data from SIP server, validates it, logs to database, and queues for processing via RabbitMQ",
+                "operationId": "storeCallEvent",
+                "tags": [
+                    "CallEvent"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/StoreCallEventRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Event queued successfully",
+                        "content": {
+                            "application\/json": {
+                                "example": {
+                                    "status": "queued"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/ValidationError"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/InternalServerError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "CallEvent",
+            "description": "Call event management from SIP server"
+        }
+    ]
+}
