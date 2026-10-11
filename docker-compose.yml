@@ -36,6 +36,8 @@ services:
       - ./docker-include.txt:/var/www/html/docker-include.txt:ro
     env_file:
       - .env
+    environment:
+      L5_SWAGGER_CONST_HOST: "http://localhost/api/v1"
     networks:
       - ATLTechCallCenterAPI
 
@@ -51,6 +53,8 @@ services:
     entrypoint: ["composer"]
     env_file:
       - .env
+    environment:
+      L5_SWAGGER_CONST_HOST: "http://localhost/api/v1"
     networks:
       - ATLTechCallCenterAPI
 
@@ -61,6 +65,8 @@ services:
     container_name: artisan
     env_file:
       - .env
+    environment:
+      L5_SWAGGER_CONST_HOST: "http://localhost/api/v1"
     volumes:
       - ./src/be:/var/www/html/be:delegated
       - ./.env:/var/www/html/be/.env
@@ -76,6 +82,8 @@ services:
     container_name: phpunit
     env_file:
       - .env
+    environment:
+      L5_SWAGGER_CONST_HOST: "http://localhost/api/v1"
     volumes:
       - ./src/be:/var/www/html/be
     working_dir: /var/www/html/be
