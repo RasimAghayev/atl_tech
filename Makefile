@@ -123,13 +123,11 @@ fresh:
 
 ## Generate Swagger documentation
 swagger:
-	@echo "$(BLUE)Generating Swagger documentation from PHP attributes...$(NC)"
-	docker-compose run --rm artisan swagger:generate-from-attributes --path="app"
-	@echo "$(BLUE)Copying to L5-Swagger location...$(NC)"
-	docker-compose exec php cp /var/www/html/be/storage/api-docs/swagger.json /var/www/html/be/storage/api-docs/api-docs.json
+	@echo "$(BLUE)Generating Swagger documentation from @OA\* annotations...$(NC)"
+	docker-compose run --rm artisan l5-swagger:generate --no-interaction
 	@echo "$(GREEN)Swagger documentation generated successfully!$(NC)"
 	@echo "$(YELLOW)OpenAPI JSON: http://localhost:8000/docs$(NC)"
-	@echo "$(GREEN)Swagger UI: http://localhost:8000/api/documentation/list$(NC)"
+	@echo "$(YELLOW)Swagger UI: http://localhost:8000/api/documentation/list$(NC)"
 
 ## Run all quality checks
 quality: cs-fix analyse test

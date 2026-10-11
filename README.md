@@ -1,14 +1,14 @@
-# Call Event API - Zəng Hadisələri Sistemi
+# Call Event API - Call Events System
 
-SIP serverinizlə inteqrasiya olunan REST API - zəng məlumatlarını qəbul edir, bazada saxlayır və növbəyə salır.
+A REST API integrated with your SIP server - receives call data, stores it in the database and places it in a queue.
 
-## 🚀 Başlamaq
+## 🚀 Getting Started
 
-### Tələblər
+### Requirements
 - Docker
 - Make
 
-### Quraşdırma
+### Installation
 
 ```bash
 # 1. Layihəni klonlayın
@@ -19,12 +19,12 @@ cd atl_tech
 make setup
 ```
 
-Bu komanda sizin üçün hazırlayır:
-- Docker containerləri (PHP, Nginx, PostgreSQL, Redis, RabbitMQ)
-- Baza cədvəllərini
-- API token-u
+This command prepares the following for you:
+- Docker containers (PHP, Nginx, PostgreSQL, Redis, RabbitMQ)
+- Database tables
+- API token
 
-### İstifadə
+### Usage
 
 ```bash
 # API token-u əldə edin
@@ -43,16 +43,16 @@ curl -X POST http://localhost:8000/api/v1/call-events \
   }'
 ```
 
-## 📖 Sənədləşdirmə
+## 📖 Documentation
 
-Layihə haqqında ətraflı məlumat üçün:
+For detailed information about the project:
 
-- **[Backend README](src/be/README.md)** - API istifadəsi, quraşdırma, əsas komandalar
-- **[API Nümunələri](src/be/app/Modules/CallEvent/API_EXAMPLES.md)** - Curl, PHP, Python nümunələri
-- **[Swagger Guide](docs/SWAGGER_GUIDE.md)** - API sənədləşdirməsi və interaktiv test
-- **[Arxitektura](ARCHITECTURE.md)** - Sistem dizaynı və DDD strukturu
+- **[Backend README](src/be/README.md)** - API usage, installation, main commands
+- **[API Examples](src/be/app/Modules/CallEvent/API_EXAMPLES.md)** - Curl, PHP, Python examples
+- **[Swagger Guide](docs/SWAGGER_GUIDE.md)** - API documentation and interactive testing
+- **[Architecture](ARCHITECTURE.md)** - System design and DDD structure
 
-## 🛠️ Əsas Komandalar
+## 🛠️ Main Commands
 
 ```bash
 make setup      # İlk quraşdırma (hər şey avtomatik)
@@ -63,26 +63,26 @@ make swagger    # API sənədini yarat
 make logs       # Logları göstər
 ```
 
-## 🌐 Əlaqələr
+## 🌐 Endpoints
 
 - **API:** http://localhost:8000
 - **Swagger UI:** http://localhost:8000/api/documentation/list
 - **PostgreSQL:** localhost:5432
 - **RabbitMQ Management:** http://localhost:15672 (guest/guest)
 
-## 📊 Nə Edir?
+## 📊 What Does It Do?
 
 ```
 SIP Server → API → Validation → PostgreSQL + RabbitMQ
 ```
 
-1. SIP server zəng məlumatı göndərir
-2. API yoxlayır və təsdiqlə yir
-3. PostgreSQL-də saxlayır
-4. RabbitMQ-ya növbəyə salır
-5. İstənilən consumer tərəfindən emal edilə bilər
+1. The SIP server sends call data
+2. The API validates and acknowledges it
+3. It stores the data in PostgreSQL
+4. It queues the message in RabbitMQ
+5. It can be processed by any consumer
 
-## 🎯 Xüsusiyyətlər
+## 🎯 Features
 
 - REST API (Laravel 12)
 - Bearer Token Authentication
@@ -94,7 +94,7 @@ SIP Server → API → Validation → PostgreSQL + RabbitMQ
 - Request Validation
 - Unix Timestamp Optimization
 
-## 🔧 Texnologiyalar
+## 🔧 Technologies
 
 - **Backend:** Laravel 12 (PHP 8.4)
 - **Database:** PostgreSQL 17
@@ -103,7 +103,7 @@ SIP Server → API → Validation → PostgreSQL + RabbitMQ
 - **Web Server:** Nginx
 - **Container:** Docker & Docker Compose
 
-## 📝 Qısa Nümunə
+## 📝 Quick Example
 
 ```bash
 # Quraşdır
@@ -123,28 +123,28 @@ curl -X POST http://localhost:8000/api/v1/call-events \
 {"status":"queued"}
 ```
 
-## 🆘 Kömək Lazımdır?
+## 🆘 Need Help?
 
-**Token işləmir:**
+**Token is not working:**
 ```bash
-make token  # Yeni token əldə et
+make token  # Get a new token
 ```
 
-**Sistem işləmir:**
+**System is not working:**
 ```bash
 make down && make up
 ```
 
-**Bazanı sıfırla:**
+**Reset the database:**
 ```bash
 make fresh
 ```
 
-**Daha çox məlumat:**
-- [API_EXAMPLES.md](src/be/app/Modules/CallEvent/API_EXAMPLES.md) - Troubleshooting bölməsi
-- Container logları: `make logs`
-- Laravel logları: `src/be/storage/logs/laravel.log`
+**More information:**
+- [API_EXAMPLES.md](src/be/app/Modules/CallEvent/API_EXAMPLES.md) - Troubleshooting section
+- Container logs: `make logs`
+- Laravel logs: `src/be/storage/logs/laravel.log`
 
 ---
 
-Daha ətraflı məlumat üçün [src/be/README.md](src/be/README.md) faylına baxın.
+See the [src/be/README.md](src/be/README.md) file for more detailed information.

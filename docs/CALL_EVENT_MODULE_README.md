@@ -1,12 +1,12 @@
 # Call Event Module - Laravel + RabbitMQ
 
-## Layihə haqqında
+## About the Project
 
-Bu modul SIP serverindən gələn zəng eventlərini qəbul edib RabbitMQ-ya göndərən Laravel servisidir. Layihə **Domain-Driven Design (DDD)** arxitekturasına uyğun qurulub və modern Laravel 12 best practice-lərindən istifadə edir.
+This module is a Laravel service that receives call events coming from a SIP server and forwards them to RabbitMQ. The project is structured according to the **Domain-Driven Design (DDD)** architecture and uses modern Laravel 12 best practices.
 
-## Arxitektura
+## Architecture
 
-### Struktur
+### Structure
 
 ```
 app/
@@ -30,7 +30,7 @@ app/
 │       ├── Repositories/             # Repository implementations
 │       │   └── PostgresCallEventRepository.php
 │       ├── Routes/                   # Module routes
-│       │   └── api.php
+│       │   │   └── api.php
 │       ├── Services/                 # Business logic
 │       │   └── CallEventService.php
 │       └── Providers/                # Service providers
@@ -56,31 +56,31 @@ app/
 4. **Dependency Injection**: Loose coupling
 5. **Interface Segregation**: Contract-based development
 
-## Quraşdırma
+## Installation
 
-### 1. Tələblər
+### 1. Requirements
 
 - Docker & Docker Compose
 - PHP 8.4+
 - PostgreSQL 16+
 - RabbitMQ 3.13+
 
-### 2. Layihəni klonlayın
+### 2. Clone the project
 
 ```bash
 git clone https://github.com/RasimAghayev/atl_tech.git
 cd atl_tech
 ```
 
-### 3. Environment konfiqurasiyası
+### 3. Environment configuration
 
-`.env` faylını yaradın və konfiqurasiya edin:
+Create and configure the `.env` file:
 
 ```bash
 cp src/be/.env.example src/be/.env
 ```
 
-Əsas parametrlər:
+Main parameters:
 
 ```env
 # Database
@@ -103,7 +103,7 @@ RABBITMQ_VHOST=/
 CALL_EVENT_QUEUE_NAME=call-events
 ```
 
-### 4. Docker konteynerləri başladın
+### 4. Start the Docker containers
 
 ```bash
 # Build and start all services
@@ -118,7 +118,7 @@ make build
 make up
 ```
 
-### 5. Composer paketlərini yükləyin
+### 5. Install the Composer packages
 
 ```bash
 docker-compose run --rm composer install
@@ -127,13 +127,13 @@ docker-compose run --rm composer install
 make composer-install
 ```
 
-### 6. Application key yaradın
+### 6. Generate the application key
 
 ```bash
 docker-compose run --rm artisan key:generate
 ```
 
-### 7. Database migration işlədin
+### 7. Run the database migrations
 
 ```bash
 docker-compose run --rm artisan migrate
@@ -142,18 +142,18 @@ docker-compose run --rm artisan migrate
 make migrate
 ```
 
-## RabbitMQ İnteqrasiyası
+## RabbitMQ Integration
 
-### İş Prinsipi
+### How It Works
 
-1. **Connection**: `RabbitMQPublisher` class-ı RabbitMQ-ya qoşulur
-2. **Queue Declaration**: `call-events` adlı durable queue yaradılır
-3. **Message Publishing**: Validated event data JSON formatda queue-a göndərilir
-4. **Error Handling**: Connection və publish xətaları log-lanır və exception atılır
+1. **Connection**: The `RabbitMQPublisher` class connects to RabbitMQ
+2. **Queue Declaration**: A durable queue named `call-events` is created
+3. **Message Publishing**: Validated event data is sent to the queue in JSON format
+4. **Error Handling**: Connection and publish errors are logged and an exception is thrown
 
-### Konfiqurasiya
+### Configuration
 
-RabbitMQ parametrləri `config/call-event.php` faylında və `.env`-də təyin edilir:
+RabbitMQ parameters are defined in the `config/call-event.php` file and in `.env`:
 
 ```php
 'rabbitmq' => [
@@ -167,7 +167,7 @@ RabbitMQ parametrləri `config/call-event.php` faylında və `.env`-də təyin e
 
 ### Message Format
 
-Queue-a göndərilən mesaj formatı:
+The message format sent to the queue:
 
 ```json
 {
@@ -182,12 +182,12 @@ Queue-a göndərilən mesaj formatı:
 
 ### RabbitMQ Management UI
 
-Browser-də açın: `http://localhost:15672`
+Open in a browser: `http://localhost:15672`
 
 - Username: `guest`
 - Password: `guest`
 
-## API İstifadəsi
+## API Usage
 
 ### Endpoint
 
@@ -197,7 +197,7 @@ POST /api/v1/call-events
 
 ### Authentication
 
-Bearer Token authentication istifadə olunur. Token `.env` faylında `CALL_EVENT_API_TOKEN` parametri ilə təyin edilir.
+Bearer Token authentication is used. The token is defined in the `.env` file with the `CALL_EVENT_API_TOKEN` parameter.
 
 ```bash
 Authorization: Bearer your-secret-api-token-change-this
@@ -218,12 +218,12 @@ Authorization: Bearer your-secret-api-token-change-this
 
 ### Event Types
 
-- `call_started` - Zəng başladı
-- `call_ended` - Zəng sona çatdı (duration required)
-- `call_held` - Zəng gözləməyə alındı
-- `call_transferred` - Zəng yönləndirildi
-- `call_missed` - Buraxılmış zəng
-- `call_answered` - Zəng cavablandırıldı
+- `call_started` - Call started
+- `call_ended` - Call ended (duration required)
+- `call_held` - Call put on hold
+- `call_transferred` - Call transferred
+- `call_missed` - Missed call
+- `call_answered` - Call answered
 
 ### Validation Rules
 
@@ -273,7 +273,7 @@ Authorization: Bearer your-secret-api-token-change-this
 }
 ```
 
-### cURL Nümunəsi
+### cURL Example
 
 ```bash
 curl -X POST http://localhost/api/v1/call-events \
@@ -290,7 +290,7 @@ curl -X POST http://localhost/api/v1/call-events \
 
 ## Testing
 
-### Unit və Feature testlər
+### Unit and Feature tests
 
 ```bash
 # Run all tests
@@ -305,7 +305,7 @@ docker-compose run --rm artisan test --coverage
 
 ### Test Coverage
 
-`CallEventApiTest` aşağıdakı halları test edir:
+`CallEventApiTest` tests the following cases:
 
 - Successful event submission
 - Call ended event with duration
@@ -318,7 +318,7 @@ docker-compose run --rm artisan test --coverage
 
 ## Database Schema
 
-### `call_event_logs` cədvəli
+### `call_event_logs` table
 
 | Column       | Type      | Description              |
 | ------------ | --------- | ------------------------ |
@@ -336,7 +336,7 @@ docker-compose run --rm artisan test --coverage
 
 ## Logging
 
-Bütün event və error-lar Laravel log sistemində qeyd olunur:
+All events and errors are recorded in the Laravel log system:
 
 ### Log Locations
 
@@ -350,7 +350,7 @@ Bütün event və error-lar Laravel log sistemində qeyd olunur:
 - `INFO`: Successful operations
 - `ERROR`: Failures and exceptions
 
-## Təhlükəsizlik
+## Security
 
 ### API Token Authentication
 
@@ -430,7 +430,7 @@ Swagger/OpenAPI documentation:
 http://localhost/api/documentation
 ```
 
-## Paketlər
+## Packages
 
 ### Production Dependencies
 
@@ -447,18 +447,18 @@ http://localhost/api/documentation
 
 ## Best Practices
 
-1. **SOLID Principles**: Her class tək məsuliyyət daşıyır
-2. **DRY (Don't Repeat Yourself)**: Kod təkrarlanmır
-3. **KISS (Keep It Simple)**: Sadə və anlaşılan kod
-4. **Type Safety**: Strict types və PHP 8.4 features
+1. **SOLID Principles**: Every class carries a single responsibility
+2. **DRY (Don't Repeat Yourself)**: Code is not repeated
+3. **KISS (Keep It Simple)**: Simple and understandable code
+4. **Type Safety**: Strict types and PHP 8.4 features
 5. **Error Handling**: Comprehensive exception handling
 6. **Logging**: Detailed logging for debugging
 7. **Testing**: High test coverage
 
-## Əlaqə
+## Contact
 
-Suallarınız olarsa, issue açın və ya pull request göndərin.
+If you have questions, open an issue or send a pull request.
 
-## Lisenziya
+## License
 
 MIT License

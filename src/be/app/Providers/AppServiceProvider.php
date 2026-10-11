@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Support\Console\Commands\GenerateSwaggerFromAttributes;
 use App\Support\Services\CacheService;
 use Illuminate\Support\ServiceProvider;
 use L5Swagger\Generator;
@@ -19,7 +18,7 @@ class AppServiceProvider extends ServiceProvider
         // Shared services
         $this->app->singleton(CacheService::class);
 
-        // Swagger generator
+        // Swagger generator (darkaonline/l5-swagger)
         $this->app->singleton(Generator::class, fn($app) => new Generator($app));
     }
 
@@ -28,11 +27,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Register custom console commands
-        if ($this->app->runningInConsole()) {
-            $this->commands([
-                GenerateSwaggerFromAttributes::class,
-            ]);
-        }
+        // No custom console commands to register.
     }
 }
