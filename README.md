@@ -1,4 +1,6 @@
 # Call Event API - Call Events System
+![Views](https://hits.sh/github.com/RasimAghayev/atl_tech.svg?label=views&color=0e75b6)
+
 
 A REST API integrated with your SIP server - receives call data, stores it in the database and places it in a queue.
 
