@@ -1,236 +1,136 @@
-# Improvement Roadmap
-
-**Repository**: `atl_tech`  
-**Audit Date**: 2026-11-12  
-**Auditor**: Phase 3 Agent  
-**Planning Horizon**: 12 months (Phases 4-11)
-
----
-
-## Vision
-
-Transform the Call Event API from a **functional prototype** into a **production-grade, observable, resilient platform** capable of handling telecom-scale call event ingestion with enterprise SLAs.
-
----
-
-## Phase 4: Foundation Hardening (Weeks 1-2)
-
-**Goal**: Eliminate critical blockers; establish quality gates.
-
-| Task | Description | Owner | Effort | Dependencies |
-|------|-------------|-------|--------|--------------|
-| 4.1 | **Rotate all exposed secrets** (APP_KEY, MAIL, JWT, API_TOKEN) | DevOps | 30 min | None |
-| 4.2 | **Sanitize `.env.example`** files (root + src/be) with placeholders | DevOps | 15 min | 4.1 |
-| 4.3 | **Add GitHub Actions CI pipeline** (test, pint, phpstan, composer audit) | DevOps | 3 hrs | None |
-| 4.4 | **Fix config drift** between docker-compose.yml and .env.example | DevOps | 30 min | 4.2 |
-| 4.5 | **Add `/up` health endpoint** for container orchestration | Backend | 30 min | None |
-| 4.6 | **Change default RabbitMQ credentials** (guest/guest → strong) | DevOps | 15 min | None |
-| 4.7 | **Add request body size limit** in nginx (1M) | DevOps | 10 min | None |
-
-**Exit Criteria**: CI passing on main; no secrets in repo; health checks green.
-
----
-
-## Phase 5: Reliability & Resilience (Weeks 3-4)
-
-**Goal**: Make the system resilient to infrastructure failures.
-
-| Task | Description | Owner | Effort | Dependencies |
-|------|-------------|-------|--------|--------------|
-| 5.1 | **RabbitMQ connection recovery** with retry/backoff/circuit breaker | Backend | 3 hrs | 4.3 |
-| 5.2 | **PostgreSQL test parity** (testcontainers or dedicated CI DB) | Backend | 4 hrs | 4.3 |
-| 5.3 | **Migration rollback tests** in CI | Backend | 1 hr | 5.2 |
-| 5.4 | **Per-token rate limiting** (replace IP-only throttle) | Backend | 2 hrs | 4.3 |
-| 5.5 | **CSP header** for API responses | Backend | 30 min | None |
-| 5.6 | **Audit logging** for auth failures (401 attempts) | Backend | 30 min | None |
-
-**Exit Criteria**: Broker restart doesn't break publishes; CI uses PostgreSQL; rate limits enforced per token.
-
----
-
-## Phase 6: Observability Foundation (Weeks 5-6)
-
-**Goal**: Gain visibility into system behavior in production.
-
-| Task | Description | Owner | Effort | Dependencies |
-|------|-------------|-------|--------|--------------|
-| 6.1 | **Structured JSON logging** with correlation IDs | Backend | 3 hrs | 5.1 |
-| 6.2 | **Request ID middleware** (generate/propagate X-Request-ID) | Backend | 1 hr | 6.1 |
-| 6.3 | **Prometheus metrics** endpoint (`/metrics`) | Backend | 3 hrs | 4.3 |
-| 6.4 | **Grafana dashboards** (latency, error rate, queue depth, DB) | DevOps | 4 hrs | 6.3 |
-| 6.5 | **Alerting rules** (error rate >1%, p99 >2s, queue lag >1000) | DevOps | 2 hrs | 6.4 |
-| 6.6 | **Distributed tracing** (OpenTelemetry → Jaeger/Zipkin) | Backend | 5 hrs | 6.1 |
-
-**Exit Criteria**: Dashboards live; alerts firing correctly; traces span HTTP → RabbitMQ.
-
----
-
-## Phase 7: Queue Consumer & Processing (Weeks 7-8)
-
-**Goal**: Actually process the queued call events.
-
-| Task | Description | Owner | Effort | Dependencies |
-|------|-------------|-------|--------|--------------|
-| 7.1 | **Implement RabbitMQ consumer worker** (Laravel Queue or standalone) | Backend | 4 hrs | 5.1 |
-| 7.2 | **Dead Letter Queue (DLQ)** configuration with retry policy | Backend | 3 hrs | 7.1 |
-| 7.3 | **Consumer scaling** (multiple workers, prefetch tuning) | DevOps | 2 hrs | 7.1 |
-| 7.4 | **Consumer monitoring** (lag, throughput, error rate) | DevOps | 2 hrs | 6.3, 7.1 |
-| 7.5 | **Idempotency** for downstream processing (deduplication keys) | Backend | 3 hrs | 7.1 |
-
-**Exit Criteria**: Events consumed within 5s; DLQ captures failures; horizontal scaling works.
-
----
-
-## Phase 8: Security Hardening (Weeks 9-10)
-
-**Goal**: Meet enterprise security requirements.
-
-| Task | Description | Owner | Effort | Dependencies |
-|------|-------------|-------|--------|--------------|
-| 8.1 | **Token rotation/expiration** (JWT with `exp`, rotation endpoint) | Backend | 4 hrs | None |
-| 8.2 | **CORS configuration** for production origins | Backend | 30 min | None |
-| 8.3 | **Request size validation** in application layer | Backend | 15 min | None |
-| 8.4 | **Security headers audit** (HSTS, CSP, Permissions-Policy) | DevOps | 1 hr | 5.5 |
-| 8.5 | **Dependency vulnerability scanning** in CI (`composer audit`, `npm audit`) | DevOps | 1 hr | 4.3 |
-| 8.6 | **Container image scanning** (Trivy/Snyk in CI) | DevOps | 2 hrs | 4.3 |
-
-**Exit Criteria**: Tokens rotate automatically; CI blocks vulnerable deps; images clean.
-
----
-
-## Phase 9: API Evolution & Documentation (Weeks 11-12)
-
-**Goal**: Sustainable API lifecycle management.
-
-| Task | Description | Owner | Effort | Dependencies |
-|------|-------------|-------|--------|--------------|
-| 9.1 | **API versioning strategy** document (semver, deprecation policy) | Backend | 2 hrs | None |
-| 9.2 | **OpenAPI contract testing** (validate responses against spec) | Backend | 3 hrs | 4.3 |
-| 9.3 | **Swagger config fix** (ensure `app/Modules` scanned) | Backend | 30 min | None |
-| 9.4 | **API deprecation headers** (`Sunset`, `Deprecation`) | Backend | 1 hr | 9.1 |
-| 9.5 | **Documentation language standardization** (English only) | Tech Writer | 3 hrs | None |
-
-**Exit Criteria**: Versioning policy published; contract tests in CI; docs consistent.
-
----
-
-## Phase 10: Quality & Developer Experience (Weeks 13-14)
-
-**Goal**: Reduce friction; catch bugs earlier.
-
-| Task | Description | Owner | Effort | Dependencies |
-|------|-------------|-------|--------|--------------|
-| 10.1 | **Mutation testing** (Infection) in CI | Backend | 3 hrs | 4.3 |
-| 10.2 | **Dependabot/Renovate** config for automated updates | DevOps | 30 min | None |
-| 10.3 | **Rector upgrade** to Laravel 120 rule set | Backend | 1 hr | None |
-| 10.4 | **PHPStan ignore reduction** (address 5 patterns incrementally) | Backend | 4 hrs | Ongoing |
-| 10.5 | **Root `.editorconfig`** for consistent IDE setup | DevOps | 10 min | None |
-| 10.6 | **Makefile portability** (remove bash-specific `read -p`) | DevOps | 10 min | None |
-
-**Exit Criteria**: Mutation score >80%; Dependabot PRs auto-merge on green; PHPStan clean.
-
----
-
-## Phase 11: Performance & Scale (Weeks 15-16)
-
-**Goal**: Prepare for production load.
-
-| Task | Description | Owner | Effort | Dependencies |
-|------|-------------|-------|--------|--------------|
-| 11.1 | **Load testing** (k6/Locust: 1000 req/s target) | QA | 4 hrs | 7.3 |
-| 11.2 | **Database optimization** (partitioning `call_event_logs`, read replicas) | Backend | 4 hrs | 11.1 |
-| 11.3 | **Redis caching** for hot lookups (if needed) | Backend | 2 hrs | 11.1 |
-| 11.4 | **Nginx tuning** (HTTP/2, keepalive, proxy buffering) | DevOps | 1 hr | None |
-| 11.5 | **Capacity planning** document (scaling triggers, limits) | DevOps | 2 hrs | 11.1 |
-| 11.6 | **Chaos engineering** (broker kill, DB failover, network latency) | DevOps | 4 hrs | 6.4, 7.3 |
-
-**Exit Criteria**: 1000 req/s sustained; p99 <500ms; automated failover verified.
-
----
-
-## Cross-Cutting Concerns (Ongoing)
-
-| Area | Activities | Cadence |
-|------|------------|---------|
-| **Dependency Management** | `composer outdated`, `npm outdated`, security advisories | Weekly |
-| **Secret Rotation** | Rotate API keys, DB passwords, JWT secrets | Quarterly |
-| **Documentation Sync** | Update docs with code changes | Per PR |
-| **Architecture Decision Records (ADRs)** | Record significant decisions | Per decision |
-| **Post-Incident Reviews** | Blameless postmortems for SEV-1/2 | Per incident |
-
----
-
-## Resource Estimates
-
-| Phase | Backend (hrs) | DevOps (hrs) | QA (hrs) | Tech Writer (hrs) | Total (hrs) |
-|-------|---------------|--------------|----------|-------------------|-------------|
-| 4 | 1 | 4.5 | 0 | 0 | 5.5 |
-| 5 | 10.5 | 0 | 0 | 0 | 10.5 |
-| 6 | 12 | 6 | 0 | 0 | 18 |
-| 7 | 12 | 4 | 0 | 0 | 16 |
-| 8 | 4.75 | 3 | 0 | 0 | 7.75 |
-| 9 | 6.5 | 0 | 0 | 3 | 9.5 |
-| 10 | 8.5 | 1 | 0 | 0 | 9.5 |
-| 11 | 10 | 7 | 4 | 0 | 21 |
-| **Total** | **65.25** | **25.5** | **4** | **3** | **97.75** |
-
----
-
-## Risk Register
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| RabbitMQ 2.x → 3.x migration breaks publisher | Medium | High | Test in staging; feature flag; Phase 5.1 addresses |
-| Laravel 12 → 13 upgrade scope creep | Medium | High | Pin to 12.x until Phase 11; separate epic |
-| Testcontainers flakiness in CI | Medium | Medium | Use dedicated PostgreSQL service; retry logic |
-| Consumer implementation reveals schema gaps | Low | High | Contract testing (Phase 9.2) before consumer |
-| Team capacity insufficient for parallel phases | High | Medium | Prioritize P0/P1; defer P2/P3; seek stakeholder alignment |
-
----
-
-## Gate 10: Pre-Approval Status
-
-**This roadmap requires stakeholder approval before Phase 4 execution.**
-
-| Gate | Status | Notes |
-|------|--------|-------|
-| Gate 10 (Roadmap Approval) | **NEEDS-APPROVAL** | Not pre-approved; record in `projects/info/state/handoff/3/atl_tech.md` |
-
-**Approval Required From**: Product Owner, Engineering Lead, DevOps Lead
-
-**Approval Criteria**:
-- [ ] Resource allocation confirmed (2 backend, 1 DevOps, 0.5 QA)
-- [ ] Timeline acceptable (16 weeks to Phase 11)
-- [ ] Scope aligned with business priorities
-- [ ] Risk register acknowledged
-
----
-
-## Success Metrics (KPIs)
-
-| Metric | Baseline (Audit) | Target (Phase 11) | Measurement |
-|--------|------------------|-------------------|-------------|
-| CI Pass Rate | N/A (no CI) | 100% on main | GitHub Actions |
-| Secret Exposure | 4 critical | 0 | TruffleHog/GitLeaks in CI |
-| Test DB Parity | SQLite only | PostgreSQL in CI | CI config |
-| RabbitMQ Resilience | Fails on restart | Auto-recover <5s | Chaos test |
-| Health Endpoint | Missing | `/up` returns 200 | Orchestration |
-| Observability | Logs only | Metrics + Traces + Logs | Grafana/Jaeger |
-| Queue Processing | Publisher only | Consumer + DLQ | Lag <5s |
-| Mutation Score | N/A | >80% | Infection |
-| Load Capacity | Unknown | 1000 req/s, p99<500ms | k6 |
-| Deployment Frequency | Manual | On merge to main | CI/CD |
-
----
-
-## Handoff Notes for Phase 4 Team
-
-1. **Start with Phase 4.1-4.7 immediately** — these unblock everything else
-2. **CI pipeline (4.3) is the force multiplier** — invest in quality here
-3. **RabbitMQ resilience (5.1) is the highest technical risk** — allocate senior engineer
-4. **Testcontainers (5.2) may need CI runner resources** — provision early
-5. **Document decisions in ADRs** — start from Phase 4
-
----
-
-*Generated by Phase 3 Audit — `atl_tech` repository*
+﻿# Improvement Roadmap — `atl_tech`
+
+> Phase 3 plan (docs-only). This roadmap defines how Phases 4–11 apply to `atl_tech`, risks, `n/a` items, and where standing decisions land. **Approval Gate 10 required** before execution of Phase 4+.
+
+## 1. Objectives and success criteria
+- Establish a secure, reproducible, Docker-first baseline with evidence (`make verify` / tests in container).
+- Eliminate/contain P0 risks first (secret rotation, CI gate, delivery consistency strategy).
+- Upgrade runtimes, dependencies, images, and tooling to latest stable (registry-verified at execution time) without unapproved behavior regressions.
+- Reach enforceable quality: automated tests, static/security checks, and CI within budget.
+- Keep scope controlled (YAGNI/KISS): one logical change per commit, docs/behavior aligned with evidence.
+
+## 2. Phase 4–11 plan (repo-specific)
+
+### Phase 4 — Git hygiene (`git-steward`)
+- **Applies:** Yes.
+- **Plan:**
+  - Treat all gitleaks findings as **compromised**: request rotation/revocation for `APP_KEY`, `JWT_SECRET`, `CALL_EVENT_API_TOKEN`, mail credentials referenced in `.env.example` (values redacted in audit). Sanitize tracked examples/docs to placeholders in normal commits.
+  - Review/triage open remote branches/PRs (notably `renovate/*` visible on origin) per policy: merge ready safe changes via PR flow as appropriate, or defer dependency bumps to Phase 6 ordering; delete merged/stale branches; keep only `main` and `test` where required.
+  - Verify/add `.gitignore` coverage for env/keys/artifacts and pre-commit/CI secret scanning hooks once pipeline exists.
+  - Record branch/PR decisions with evidence in handoff.
+- **Risks:** Secret rotation coordination outside repo; merge conflicts with dependency-upgrade work.
+- **Gates/decisions:** **No history rewrite/force-push** without Gate 1. Gate 11 if abandoning unmergeable work. Default-branch change (`master`→`main` if pursued) requires Gate 4 — **not assumed** in this plan.
+- **n/a:** None.
+
+### Phase 5 — Container baseline (`container-engineer`)
+- **Applies:** Yes.
+- **Plan:**
+  - Define and implement Docker contract: multi-stage images, `make build/test/verify/up` semantics (verify gates runtime), healthchecks, non-root runtime, pinned base images/digests where appropriate, BuildKit secrets (no secrets in layers), `.dockerignore` hardening.
+  - Canonicalize env handling (`.env.example` placeholders-only, single source of truth) and compose project/port alignment (reserve/check `projects/info/state/ports.md` before binding changes).
+  - Produce `docs/BASELINE.md` with real command→exit evidence (build/test/smoke) run in Docker; add characterization tests only for critical untested paths if needed to lock behavior.
+  - Address PHP image issues evidenced in audit (e.g. `777` perms, conditional composer install/update determinism) without changing business logic.
+- **Risks:** Existing environment assumptions (bind mounts, host paths) break; baseline may expose pre-existing failures (must be recorded honestly).
+- **Standing decisions:** Docker-first verification (decision 2), secrets standard, Conventional Commits.
+- **n/a:** None.
+
+### Phase 6 — Upgrade to latest (`upgrader`)
+- **Applies:** Yes (high impact).
+- **Plan (ordered, registry-checked at execution time):**
+  1. **Runtime/base images:** align PHP 8.4.x patch and container base digests/tags; PostgreSQL/Redis/RabbitMQ/Nginx image currency policy.
+  2. **Backend framework/ecosystem:** Laravel 12→13 and compatible first-party packages (`sanctum`, `tinker`, `l5-swagger`, JWT package decisions), migrate breaking changes.
+  3. **Messaging client:** `php-amqplib` 2→3 API migration with verification.
+  4. **Dev/test tooling:** PHPUnit 12→13 and aligned PHPStan/Larastan/Rector/Pint/PHPCS/plugin ecosystem.
+  5. **Frontend toolchain (scoped):** introduce npm lockfile; evaluate/upgrade Vite 6→8, Tailwind 3→4, `laravel-vite-plugin` compatibility (or remove if proven unused in Phase 7 with evidence).
+  6. **CI actions/images (when CI added):** latest stable, SHA-pinned in workflow definitions (Phase 10).
+  - Triage `renovate/*` branches/PRs against chosen target versions (merge if aligned/green, close superseded).
+  - Run `make verify`/tests in Docker after each logical upgrade group; document blockers and migration notes in `CHANGELOG.md`.
+- **Risks:** Breaking changes in Laravel 13, AMQP v3, Swagger major, PHPUnit major, Tailwind/Vite majors; potential contract changes.
+- **Gates/decisions:** Latest stable always (decision 1) with runtime registry lookup; **Gate 5** if this repo’s own public API/behavioral contract must break; no new dependency without Phase 2-backed `docs/DEPENDENCY_DECISIONS.md` entry (decision 3).
+- **n/a:** Specific package targets not hardcoded here (must be resolved at run time).
+
+### Phase 7 — Dead code & restructure (`cleaner`)
+- **Applies:** Yes (targeted).
+- **Plan:**
+  - Prove and remove unused code/deps/scaffold (e.g. duplicate call-event config source, redundant middleware group, unused packages/routes/views/migrations only if evidenced unused), with separate commits and verification per batch.
+  - Normalize structure/casing/config consistency (Swagger scan path, PHPUnit source dir casing, env template consolidation) and align with upgraded framework conventions.
+  - Preserve externally observable behavior unless explicitly approved/documented.
+- **Risks:** False positives (container bindings, dynamic resolution, route/provider registration).
+- **Standing decisions:** Prove-by-tooling+tests, no guessed deletion (decision 6); KISS/YAGNI.
+- **n/a:** None.
+
+### Phase 8 — Architecture (`architect`)
+- **Applies:** Yes (focused, justified changes only).
+- **Plan:**
+  - Resolve delivery consistency (DB vs queue) with an explicit, tested strategy (e.g. outbox/transactional boundary/compensation/idempotency) proportionate to current single-endpoint scope.
+  - Clarify module boundaries/contracts (publisher/repository interfaces), config ownership, and consumer/DLQ/idempotency expectations (document/implement minimal necessary parts).
+  - Record ADRs in `docs/adr/` for non-trivial structural decisions (why applied / why not).
+- **Risks:** Over-engineering; behavior/operational semantics changes requiring coordination.
+- **Standing decisions:** Apply SOLID/DDD/EDA/Clean patterns only with real present need and ADR (decision 7); Gate 5 if public contract changes.
+- **n/a:** Full EDA/platform decomposition likely n/a unless justified by real requirements.
+
+### Phase 9 — Hardening (`hardener`)
+- **Applies:** Yes.
+- **Plan:**
+  - Security: credential/token handling model (rotation, least privilege), validation/error hygiene, secure headers/CSP wiring, CORS tightening as appropriate, rate limiting/auth hardening, dependency/image scanning, log redaction.
+  - Reliability/operability: broker/DB timeouts and failure handling, health endpoints `/health/live` and `/health/ready` semantics, graceful behavior in `MODE=standalone` for external deps where feasible, correlation IDs/structured logging.
+  - Config/12-factor alignment and `openapi.yaml` (and AsyncAPI if messaging contract formalized) kept in sync with implementation.
+- **Risks:** Stricter auth/rate/CORS rules may affect existing clients; requires coordinated rollout notes.
+- **Standing decisions:** Security/secrets rules in `CLAUDE.md`; no secrets in logs/images; P0→P3 fix/verify discipline.
+- **n/a:** Payment/PCI-specific controls n/a unless payment data handling is introduced (not evidenced).
+
+### Phase 10 — CI/CD (`ci-engineer`)
+- **Applies:** Yes.
+- **Plan:**
+  - Add GitHub Actions (or existing platform if introduced later) pipeline: fast parallel checks (format/lint, secret scan) → tests/build in Docker → image/dependency scans; cache deps/layers; build once/reuse; job timeouts and concurrency controls.
+  - Pin actions by commit SHA, least-privilege `permissions`, no secrets to fork PRs; publish only on protected/tag flows as relevant.
+  - Measure real PR runtime against ≤10 min target and document results in `docs/TEST_REPORT.md`/handoffs.
+- **Risks:** Environment/service dependencies slow or flake CI; initial baseline may be red until Phases 5/6/11 stabilize.
+- **Standing decisions:** CI runner-time standard (`PROMPT.md` §5).
+- **n/a:** Deployment to real environments (Gate 9) out of scope unless separately requested.
+
+### Phase 11 — Tests (`tester`)
+- **Applies:** Yes.
+- **Plan:**
+  - Expand unit/feature/integration tests: validation/auth edge cases, persistence semantics, broker failure/consistency behavior, migration checks, OpenAPI/contract alignment; use production-parity PostgreSQL in Docker for integration paths.
+  - Establish regression coverage against `docs/BASELINE.md`; document strategy/results/coverage/limitations in `docs/TESTING_STRATEGY.md` and `docs/TEST_REPORT.md` (with `TC_<MODULE>_<SCENARIO>_<NUMBER>` IDs and PASS/FAIL/BLOCKED/NOT RUN/SKIPPED/N/A statuses).
+  - Do not fix production bugs found here; report via handoff for responsible phase (R8).
+- **Risks:** Flaky external-service tests; effort to reach meaningful coverage on legacy/scaffold code.
+- **Standing decisions:** No weakened tests; deterministic behavior-focused tests; honest reporting.
+- **n/a:** Performance/load/mutation testing can be deferred or scheduled nightly if not justified for every PR (to be documented).
+
+## 3. n/a summary
+| Item | Status | Reason |
+|---|---|---|
+| Phase 12–17 in this audit | Out of Phase 3 execution scope | Planned program phases; not executed/documented beyond roadmap context here. |
+| Real cluster/domain/secret deployment | n/a now | Requires Gate 9 and real environment inputs. |
+| History rewrite / force push | n/a (prohibited now) | Gate 1 only if explicitly approved later. |
+| PCI/PII-specialized controls | n/a (unconfirmed need) | No payment/regulated data flows evidenced. |
+
+## 4. Risks and mitigations
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Compromised committed secrets remain usable until rotated | High | Immediate rotation request (this gate), placeholdering in tracked files, CI/pre-commit scanning (Phases 4/10). |
+| DB-publish inconsistency causes duplicate/missing downstream effects | High | Prioritize consistency design + tests (Phases 8/9/11) before production reliance. |
+| Major upgrades (Laravel/AMQP/PHPUnit/frontend majors) break behavior | Medium-High | Sequential upgrades in Docker, migration notes, rollback per step, Gate 5 if contract breaks. |
+| CI initially slow/flaky due to service dependencies | Medium | Service healthchecks, caching, targeted integration scope, measured budgets. |
+| Static audit missed runtime-only issues | Medium | Treat baseline/verify runs in Phase 5+ as source of truth and update docs/debt accordingly. |
+
+## 5. Standing decisions — where they land for `atl_tech`
+| Decision (CLAUDE.md) | Application in this repo |
+|---|---|
+| 1. Latest versions, always | Phase 6: registry-resolved latest stable for PHP/Laravel/composer deps/npm tooling/images/actions; blockers recorded in `docs/TECHNICAL_DEBT.md`/handoff. |
+| 2. Docker-first | Phases 5–11: all build/test/verify evidence from containers; `make verify` as gate for `make up`. |
+| 3. No new dependency before Phase 2 + decision entry | `projects/info/deps/atl_tech.md` exists (input); any added dep requires `docs/DEPENDENCY_DECISIONS.md` entry. |
+| 4/5. Semantic Git & branch hygiene | Phases 4–11: Conventional Commits, one logical change/commit, PR-per-phase, merged branches deleted; no `--no-verify`. |
+| 6. Dead code removed after proof | Phase 7 only with tooling+tests evidence; separate commits. |
+| 7. Design principles with ADR where applied | Phase 8: apply DRY/KISS/YAGNI/SOLID/DDD/EDA only for present problems; KISS/YAGNI win. |
+| 8. Per-phase best practices | Each phase agent satisfies its checklist before closure (R6 evidence). |
+| 10. Skill learning loop | Curator-managed proposals/updates after green handoffs (R9/R10); this audit includes a proposal in handoff. |
+| 11. Autonomous/parked gates | Gate 10 parked as `needs-approval` now; independent work cannot bypass it. |
+| 12. No AI attribution | All commits/PRs/comments must be clean. |
+| 13/14. Discussions/Wiki/Dependabot | Verify/configure in relevant phases per repo policy and platform capabilities. |
+
+## 6. Approval (Gate 10)
+- **Status:** `needs-approval`.
+- **Requested approval:** Accept this Phase 3 audit/plan for `atl_tech` to proceed to Phase 4 (git hygiene) under the constraints above (no history rewrite without Gate 1, no unapproved contract-breaking changes without Gate 5, Docker-first verification, rotation of exposed secrets handled out-of-band).
+- **Proposed rollback posture (planning level):** Because Phase 3 produced docs only, rollback is trivial (revert doc commits/PR). Execution-phase rollbacks must be per logical change/commit with verified baselines.
