@@ -11,7 +11,7 @@
         "darkaonline/l5-swagger": "^11.0",
         "laravel/framework": "^12.41",
         "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.9",
+        "laravel/tinker": "^3.0",
         "php-amqplib/php-amqplib": "^2.8",
         "php-open-source-saver/jwt-auth": "^2.7"
     },
