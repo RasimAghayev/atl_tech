@@ -1,5 +1,5 @@
 # Use the official PostgreSQL Alpine image
-FROM postgres:18.6-alpine
+FROM postgres:18.7-alpine
 
 # Add metadata labels
 LABEL maintainer="Rasim Aghayev <rasimaqayev@gmail.com>" \
