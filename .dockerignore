@@ -3,13 +3,41 @@
 **/tmp
 **/build
 **/.git
-**/tests
+# NOTE: tests/ is intentionally NOT excluded here. `server/php/Dockerfile`'s
+# `test` stage runs `vendor/bin/phpunit` against `src/be/tests/` as the
+# build-time quality gate, and `COPY src/be/ ./` (used by both `deps` and
+# `deps-prod`) draws from this same build context — excluding tests/ here
+# previously made PHPUnit fail with "Test directory tests/Unit not found"
+# because the files never reached the image at all. Test files are instead
+# explicitly removed from the `deps-prod` stage (which `runtime` is built
+# from) via `RUN rm -rf tests phpunit.xml`, so they still never ship in the
+# production image — see that stage's comment in the Dockerfile.
 **/*.log
 .gitattributes
 .gitignore
 .env
+# Laravel's compiled bootstrap cache (packages.php, services.php, config.php,
+# routes caches, ...) is host/environment-specific and regenerated on demand —
+# never ship whatever happens to exist on the machine that ran `docker build`.
+# `.gitignore` already keeps these files out of git; this keeps them out of
+# the Docker build context too.
+**/bootstrap/cache/*.php
+# `vendor/` (no `**/` prefix, below) only matches a top-level ./vendor — it
+# never matched the real path, `src/be/vendor/`, so a `vendor/` directory
+# that happened to exist on the host (e.g. from a one-off local `composer
+# install`, which should never happen under CLAUDE.md decision 2, but did)
+# was silently copied into every stage by `COPY src/be/ ./`, clobbering the
+# vendor/ that stage's own `composer install` had just produced. Concretely,
+# this is what made `deps-prod`'s `composer install --no-dev` get overwritten
+# by a full dev install copied in from the host, and the subsequent
+# `composer dump-autoload --no-dev` then failed with "Class
+# Laravel\Pail\PailServiceProvider not found" — a require-dev-only package's
+# leftover discovery metadata colliding with a --no-dev autoload rebuild.
+# `**/vendor` (anchored at any depth, matching the `**/node_modules`
+# convention already used above) is the real fix; every stage must build its
+# own vendor/ via `composer install`, never inherit one from the build host.
+**/vendor
 node_modules/
-vendor/
 *.log
 node_modules
 npm-debug.log
