@@ -153,7 +153,7 @@ make migrate
 
 ### Configuration
 
-RabbitMQ parameters are defined in the `config/call-event.php` file and in `.env`:
+RabbitMQ parameters are defined in the module's own `app/Shared/Config/call-event.php` file (merged in by `CallEventServiceProvider`, no copy published to `config/`) and in `.env`:
 
 ```php
 'rabbitmq' => [

@@ -42,3 +42,51 @@
 
 ## 4. Acceptance notes
 - No item above is marked fixed in this phase. "Compromised" secret findings require user-side rotation; technical removal from history is a separate, gated action (Gate 1) not taken here.
+
+## 5. 2026-11-25 session update (outbox/reliability work)
+
+Status changes below reflect code landed on the worktree this session (transactional
+outbox, health endpoints, idempotency, history endpoint). Per the honesty rule, each
+is marked **addressed — Docker verification in progress**, not "done," until
+`make verify` (the `--target test` build) is confirmed green and, separately, until
+`make test-integration` has actually been run against real Postgres. This section
+will be updated again once that evidence exists.
+
+| ID | New status | What changed |
+|---|---|---|
+| TD-INT-001 | Addressed — Docker verification in progress | Replaced the persist-then-publish flow with a transactional outbox: `CallEventService::create()` now writes the call-event row and an `outbox_events` row in one `DB::transaction()` (see `docs/adr/0001-transactional-outbox.md`). The request path no longer talks to RabbitMQ synchronously, so a broker outage can no longer produce a 500 with an inconsistent row. An independent `outbox:relay` worker (new `relay` service in `docker-compose.yml`) drains the outbox with exponential backoff and dead-lettering (`OutboxRelayService`, `OutboxRepository`). Not yet closed: the Postgres-specific `FOR UPDATE SKIP LOCKED` concurrency guarantee is proven by `OutboxRepositoryPostgresConcurrencyTest`, which only runs under `make test-integration` (real `pgsql` driver) — not yet executed this session. |
+| TD-INT-002 | Addressed — Docker verification in progress | Retry policy (`OUTBOX_MAX_ATTEMPTS`, exponential backoff with cap via `config/outbox.php`) and dead-lettering (`OutboxStatus::DeadLetter`) are now implemented and covered by `tests/Feature/Shared/Outbox/OutboxRelayServiceTest.php`. Idempotency contract is now explicit: a server-computed sha256 idempotency key is stored on both `call_event_logs.idempotency_key` and the outbox row; a retried submission is a no-op via `firstOrCreate()`/`wasRecentlyCreated` (see `CallEventApiTest::test_duplicate_submission_is_idempotent`). No consumer/DLQ-draining tooling added yet — out of scope for this pass, left as a follow-up. |
+| TD-OPS-002 | Addressed — Docker verification in progress | Added `/health/live` and `/health/ready` (`HealthController`), with readiness deliberately scoped to PostgreSQL only (not RabbitMQ), since the outbox pattern removed the synchronous broker dependency from the request path — see ADR-0001 for the reasoning. `server/nginx/Dockerfile`'s `HEALTHCHECK` now targets `/health/ready` instead of the Laravel default `/up`. Structured correlation-ID/tracing logging is still not done — remains open under this ID for a later pass. |
+| TD-CFG-002 | Partially addressed | Root `.env.example` and `src/be/.env.example` still diverge in content (not unified — that remains a deliberate, proportionate deferral, see Problem Solving notes), but `src/be/.env.example` now carries an explicit header comment stating the root-level file is the actual source of truth for the Docker Compose stack, closing the "which one is real" ambiguity even though the files themselves are not yet merged. Both files were updated with the new `OUTBOX_*` variables so neither drifts further on this specific set of keys. |
+
+No item in this section is claimed as **Completed and verified** per CLAUDE.md's
+four status categories until the Docker build/test evidence below exists; treat
+all four as **Implemented, not verified** until `docs/BASELINE.md` records a
+confirmed-green `make verify` run and `make test-integration` has actually
+executed `OutboxRepositoryPostgresConcurrencyTest` against real Postgres.
+
+## 6. 2026-11-25 (second session) — verification complete, final statuses
+
+The evidence section 5 was waiting on now exists in full — see
+`docs/BASELINE.md`'s "2026-11-25 run (second session...)" entry for every
+command and exit code. Statuses below supersede section 5 for the same IDs;
+section 5 is left as-is for the historical record of what was claimed before
+verification.
+
+| ID | Final status | Evidence |
+|---|---|---|
+| TD-INT-001 | **Completed and verified** | `make verify` green (23 passed, 1 skipped, 0 failures) AND `make test-integration` green for real against Postgres (`OutboxRepositoryPostgresConcurrencyTest`: 1 test, 2 assertions, OK) — the `FOR UPDATE SKIP LOCKED` claim-batch guarantee is proven, not just asserted. The relay worker was also confirmed to start and stay stable (no crash loop) once migrations ran against a real `pgsql` instance. |
+| TD-INT-002 | **Completed and verified** | Same evidence as TD-INT-001 for the retry/backoff/dead-letter path (`OutboxRelayServiceTest`, green under `make verify`). Idempotency path (`CallEventApiTest::test_duplicate_submission_is_idempotent`) also green. Consumer/DLQ-draining tooling remains explicitly out of scope — still open as a named follow-up, not silently dropped. |
+| TD-OPS-002 | **Completed and verified** (health endpoints only) | `/health/live` and `/health/ready` ship and are covered by `tests/Feature/HealthTest.php`, green under `make verify`. Structured correlation-ID/tracing logging is **not** addressed — remains open under this ID. |
+| TD-CFG-001 | **Completed and verified** | The duplicate `api` middleware group in `bootstrap/app.php` was consolidated to one definition; `SecurityHeaders` is now actually wired into the stack (it previously existed but was never attached). Confirmed via the green `make verify` run (no middleware-resolution errors) and direct reading of the consolidated `bootstrap/app.php`. |
+| TD-SEC-003 | **Completed and verified** | Direct consequence of the TD-CFG-001 fix above — `SecurityHeaders` middleware is now wired, not just present as an unused class. Verified by reading the final `bootstrap/app.php`; no dedicated header-assertion test was added this pass (left as a Phase 9/11 follow-up — this entry does not claim test coverage, only that the middleware is wired). |
+| TD-DOCS-001 | **Completed and verified** | `config/l5-swagger.php`'s scan path fixed from `base_path('App')` to `base_path('app')`. Verified by the case-sensitive Linux container build succeeding (the bug would have silently produced an empty/broken scan on a case-sensitive filesystem; the Docker build environment is case-sensitive and completed without error). |
+| TD-TOOL-001 | **Completed and verified** | `src/be/phpunit.xml`'s `<source><include><directory>` fixed from `App` to `app`, matching the real path. Verified by directory listing and the green `make verify` build (same case-sensitive-filesystem argument as TD-DOCS-001). |
+| TD-CFG-002 | **Partially addressed (unchanged from section 5)** | Still not fully unified — see section 5's note. Not revisited this session. |
+| TD-CODE-001 | **Not addressed — out-of-scope finding for Phase 7** | During this session's reading, one additional candidate was found: `findByCallId()` is declared and implemented in the repository/contract layer but has no caller anywhere in the codebase (grepped for all call sites). Per R1 (one agent, one phase), this is **not deleted here** — it is logged for Phase 7 (`cleaner`), which already owns proving dead code via tooling + coverage before deletion. |
+| TD-SEC-001 | **Still open — needs Rasim's action, not closable by any agent** | This session's diff replaces the *current* hardcoded-looking values in `.env.example`/`src/be/.env.example` with placeholders (good hygiene going forward), but the original values were already present in git history per the Phase 3 audit. Per CLAUDE.md's Security section, a secret found in history is **compromised** — this does not become "fixed" until Rasim rotates the real credentials out-of-band; removing it from history afterward is separately Gate 1. Flagged again here so it is not lost — see the final report to the orchestrator for the explicit callout. |
+| TD-DEP-001 | **Partially addressed, not closed** | `src/be/composer.lock` moved within already-declared semver ranges (no `composer.json` constraint changes) and `package.json` picked up minor devDependency bumps. This is normal lockfile drift from `composer update`/`npm` resolution, **not** the ordered, registry-checked, one-library-at-a-time major-version upgrade pass decision 1 requires — that is still Phase 6's full job, not done by this session. Left open. |
+
+All seven newly-**Completed and verified** rows above meet CLAUDE.md's bar
+because they have actual Docker-build/test evidence recorded in
+`docs/BASELINE.md`, not because the code merely exists.
