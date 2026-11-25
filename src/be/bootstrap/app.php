@@ -67,7 +67,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up'
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Global Middleware
+        // Global middleware — runs for every request (web, api, docs).
+        // SecurityHeaders sets the generic hardening headers; ContentSecurityPolicyMiddleware
+        // is the single owner of Content-Security-Policy (it varies the policy for the
+        // Swagger UI route vs. the API) — keeping both on the global stack but each owning
+        // disjoint headers removes the ordering-dependent conflict recorded in TD-SEC-003.
         $middleware->use([
             TrustProxies::class,
             HandleCors::class,
@@ -75,24 +79,24 @@ return Application::configure(basePath: dirname(__DIR__))
             ValidatePostSize::class,
             TrimStrings::class,
             ConvertEmptyStringsToNull::class,
-            //            SecurityHeaders::class,
+            SecurityHeaders::class,
+            ContentSecurityPolicyMiddleware::class,
         ]);
 
-        // API Middleware Group
-        $middleware->group('api', [
-            'throttle:api',
-            EnsureFrontendRequestsAreStateful::class,
-        ]);
-
-        // API Middleware Group
+        // API middleware group — the one and only definition (TD-CFG-001: this used to be
+        // declared twice with different contents; the second silently won and the first,
+        // which referenced an undefined "api" rate limiter, was dead either way).
+        // NOTE: routes/api.php (the file withRouting() wraps in this group) is currently
+        // empty — every real route is registered by a module's own ServiceProvider via
+        // loadRoutesFrom(), which does NOT go through this group. This definition is kept
+        // for any future module that registers directly into routes/api.php; it applies
+        // to nothing today. Each module's own route file must declare its own throttle/
+        // auth middleware explicitly (see app/Modules/CallEvent/Routes/api.php) until/
+        // unless modules are changed to route through this group instead.
         $middleware->group('api', [
             ThrottleRequests::class.':60,1',
             EnsureFrontendRequestsAreStateful::class,
             CompressResponse::class,
-        ]);
-        // API Middleware Group
-        $middleware->group('csp', [
-            ContentSecurityPolicyMiddleware::class,
         ]);
 
         // Route Specific Middleware Aliases

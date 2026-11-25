@@ -22,7 +22,6 @@ return [
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
     'allowed_origins' => [
-        'https://8000-idx-fs-al-invoice-new-1741685745064.cluster-p6qcyjpiljdwusmrjxdspyb5m2.cloudworkstations.dev',
         'http://localhost',
         'http://localhost:3000',
         'http://localhost:3001',
