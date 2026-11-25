@@ -41,7 +41,10 @@ return [
                  * Absolute paths to directory containing the swagger annotations are stored.
                 */
                 'annotations' => [
-                    base_path('App'),
+                    // Was base_path('App') (capital A) — works by accident on Windows'
+                    // case-insensitive filesystem but silently scans nothing on Linux/CI,
+                    // where the real directory is lowercase `app/` (TD-DOCS-001).
+                    base_path('app'),
                 ],
 
             ],
