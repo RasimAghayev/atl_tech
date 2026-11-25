@@ -16,7 +16,10 @@ class SecurityHeaders
         $response->headers->set('X-Frame-Options', 'DENY');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'no-referrer-when-downgrade');
-        $response->headers->set('Content-Security-Policy', "default-src 'self'; script-src 'self'");
+        // Content-Security-Policy is owned exclusively by ContentSecurityPolicyMiddleware
+        // (route-aware: a stricter policy for the API vs. a Swagger-UI-compatible one for docs).
+        // Do not set it here too — a second writer here previously made the effective
+        // policy depend on undocumented middleware ordering (TD-SEC-003).
         $response->headers->set('Permissions-Policy', 'geolocation=(), microphone=()');
         $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 

@@ -34,9 +34,13 @@ COPY --chown=nginx:nginx ./server/nginx/default.conf /etc/nginx/conf.d/default.c
 # Statik faylların kopyalanması
 COPY --chown=nginx:nginx ./src/be/ /var/www/html/be
 
-# Sağlamlıq yoxlaması əlavə edirik
+# Sağlamlıq yoxlaması əlavə edirik — /health/ready (not /up) is deliberate:
+# /up only proves Laravel booted, not that the app's actual synchronous
+# dependency (PostgreSQL) is reachable through this instance. See
+# app/Http/Controllers/HealthController.php and ADR-0001 for why readiness
+# checks only the DB and not RabbitMQ.
 HEALTHCHECK --interval=30s --timeout=3s \
-    CMD curl -f http://localhost/up || exit 1
+    CMD curl -f http://localhost/health/ready || exit 1
 
 # İşçi direktoriyasını müəyyən edirik
 WORKDIR /var/www/html

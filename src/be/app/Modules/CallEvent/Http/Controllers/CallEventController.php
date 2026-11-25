@@ -6,8 +6,8 @@ namespace App\Modules\CallEvent\Http\Controllers;
 
 use App\Modules\CallEvent\DTOs\CallEventDTO;
 use App\Modules\CallEvent\Http\Requests\CallEventRequest;
+use App\Modules\CallEvent\Models\CallEventLog;
 use App\Modules\CallEvent\Services\CallEventService;
-use App\Shared\Exceptions\BrokerConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
@@ -67,15 +67,6 @@ class CallEventController extends Controller
             $this->service->handleCallEvent($dto);
 
             return response()->json(['status' => 'queued'], 200);
-        } catch (BrokerConnectionException $e) {
-            Log::error('Failed to queue call event', [
-                'error' => $e->getMessage(),
-                'request' => $request->validated(),
-            ]);
-
-            return response()->json([
-                'error' => 'Failed to queue event. Please try again later.',
-            ], 500);
         } catch (\Throwable $e) {
             Log::error('Unexpected error processing call event', [
                 'error' => $e->getMessage(),
@@ -86,5 +77,43 @@ class CallEventController extends Controller
                 'error' => 'An unexpected error occurred.',
             ], 500);
         }
+    }
+
+    #[OA\Get(
+        path: '/api/v1/call-events/{call_id}',
+        summary: 'Fetch the recorded event history for a call',
+        description: 'Returns every call-event log row recorded for the given call_id, newest first.',
+        operationId: 'getCallEventHistory',
+        tags: ['CallEvent'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'call_id',
+                description: 'The call_id to fetch history for',
+                in: 'path',
+                required: true,
+                schema: new OA\Schema(type: 'string')
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Event history for the call'
+            ),
+        ]
+    )]
+    public function history(string $callId): JsonResponse
+    {
+        $events = $this->service->getHistory($callId);
+
+        return response()->json([
+            'call_id' => $callId,
+            'events' => $events->map(static fn (CallEventLog $log): array => [
+                'id' => $log->id,
+                'event_type' => $log->event_type->value,
+                'payload' => $log->payload,
+                'created_at' => $log->created_at,
+            ])->all(),
+        ]);
     }
 }

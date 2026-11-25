@@ -7,7 +7,6 @@ namespace Tests;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
-use Illuminate\Support\Facades\DB;
 use Tests\Traits\CreatesApplication;
 use Tests\Traits\DatabaseHelpers;
 
@@ -36,8 +35,23 @@ abstract class TestCase extends BaseTestCase
 
     protected function tearDown(): void
     {
-        // Clean up after test
-        DB::disconnect();
+        // No manual DB::disconnect() here — on this suite's DB_DATABASE=:memory:
+        // (sqlite) connection, RefreshDatabase takes the usingInMemoryDatabase()
+        // path (refreshInMemoryDatabase(): migrate once, no per-test transaction
+        // wrap/rollback), so nothing in the framework's own tearDown touches the
+        // connection either. Both orderings of a manual disconnect were tried and
+        // both broke the suite, for two different reasons:
+        //   - disconnect() BEFORE parent::tearDown(): destroys the :memory:
+        //     database's only connection before the NEXT test's setUp() can see
+        //     it, and since RefreshDatabaseState::$migrated is a static flag that
+        //     is already true by then, the next test's migrate step is skipped —
+        //     every subsequent test then fails on missing tables.
+        //   - disconnect() AFTER parent::tearDown(): parent::tearDown() has
+        //     already flushed/torn down the container by that point, so the DB
+        //     facade can't resolve the `db` binding at all — fails immediately,
+        //     even on the very first test, with "Target class [db] does not
+        //     exist" (reproduced: 21/23 tests errored this way).
+        // Plain parent::tearDown() is correct and sufficient.
         parent::tearDown();
     }
 

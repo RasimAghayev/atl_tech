@@ -22,7 +22,7 @@ make setup
 ```
 
 This command prepares the following for you:
-- Docker containers (PHP, Nginx, PostgreSQL, Redis, RabbitMQ)
+- Docker containers (PHP, Nginx, PostgreSQL, Redis, RabbitMQ, outbox relay worker)
 - Database tables
 - API token
 
@@ -69,39 +69,53 @@ make logs       # Logları göstər
 
 - **API:** http://localhost:8000
 - **Swagger UI:** http://localhost:8000/api/documentation/list
-- **PostgreSQL:** localhost:5432
+- **Health (liveness):** http://localhost:8000/health/live
+- **Health (readiness):** http://localhost:8000/health/ready
+- **PostgreSQL:** localhost:6432 (see `DB_PORT` in `.env`)
 - **RabbitMQ Management:** http://localhost:15672 (guest/guest)
 
 ## 📊 What Does It Do?
 
 ```
-SIP Server → API → Validation → PostgreSQL + RabbitMQ
+SIP Server → API → PostgreSQL + outbox_events (one transaction)
+                                       |
+                          outbox:relay worker (N instances)
+                                       |
+                                   RabbitMQ
 ```
 
-1. The SIP server sends call data
-2. The API validates and acknowledges it
-3. It stores the data in PostgreSQL
-4. It queues the message in RabbitMQ
-5. It can be processed by any consumer
+1. The SIP server sends call data to the API.
+2. The API validates it and, in a single DB transaction, writes the call-event
+   log row **and** an outbox row — see
+   [ADR-0001](docs/adr/0001-transactional-outbox.md). The request never talks
+   to RabbitMQ directly, so a broker outage never turns into a 500 here.
+3. An independent `outbox:relay` worker (its own container, horizontally
+   scalable) drains the outbox and publishes to RabbitMQ, with retry/backoff
+   and dead-lettering on repeated failure.
+4. The same event is deduplicated end-to-end via a server-computed
+   idempotency key — a retried submission is a safe no-op.
+5. It can be processed by any RabbitMQ consumer.
 
 ## 🎯 Features
 
-- REST API (Laravel 12)
+- REST API (Laravel 13)
 - Bearer Token Authentication
+- Transactional outbox for reliable, idempotent event delivery (ADR-0001)
+- Call-event history read endpoint (`GET /api/v1/call-events/{call_id}`)
+- Liveness/readiness health endpoints for orchestrators/load balancers
 - PostgreSQL Database
 - RabbitMQ Message Queue
-- Docker Compose
+- Docker Compose (multi-stage build, build-time test gate)
 - Swagger/OpenAPI Documentation
 - DDD Architecture
 - Request Validation
-- Unix Timestamp Optimization
 
 ## 🔧 Technologies
 
-- **Backend:** Laravel 12 (PHP 8.4)
-- **Database:** PostgreSQL 17
-- **Queue:** RabbitMQ 3.13
-- **Cache:** Redis 7
+- **Backend:** Laravel 13 (PHP 8.5)
+- **Database:** PostgreSQL 19
+- **Queue:** RabbitMQ 4.4
+- **Cache:** Redis 8
 - **Web Server:** Nginx
 - **Container:** Docker & Docker Compose
 

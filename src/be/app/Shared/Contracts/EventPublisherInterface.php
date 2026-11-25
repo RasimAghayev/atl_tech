@@ -6,7 +6,11 @@ namespace App\Shared\Contracts;
 
 interface EventPublisherInterface
 {
-    public function publish(string $queue, array $payload): void;
+    /**
+     * @param array<string, scalar> $headers AMQP application headers (e.g. an
+     *     idempotency_key so a downstream consumer can dedupe on redelivery).
+     */
+    public function publish(string $queue, array $payload, array $headers = []): void;
 
     public function isConnected(): bool;
 

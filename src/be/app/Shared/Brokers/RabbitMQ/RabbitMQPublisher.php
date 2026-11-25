@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\Wire\AMQPTable;
 
 final class RabbitMQPublisher implements EventPublisherInterface
 {
@@ -26,7 +27,7 @@ final class RabbitMQPublisher implements EventPublisherInterface
     ) {
     }
 
-    public function publish(string $queue, array $payload): void
+    public function publish(string $queue, array $payload, array $headers = []): void
     {
         try {
             $this->ensureConnection();
@@ -39,9 +40,14 @@ final class RabbitMQPublisher implements EventPublisherInterface
                 auto_delete: false
             );
 
+            $properties = ['delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT];
+            if ($headers !== []) {
+                $properties['application_headers'] = new AMQPTable($headers);
+            }
+
             $message = new AMQPMessage(
                 json_encode($payload, JSON_THROW_ON_ERROR),
-                ['delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]
+                $properties
             );
 
             $this->channel->basic_publish(
@@ -52,7 +58,7 @@ final class RabbitMQPublisher implements EventPublisherInterface
 
             Log::info('Message published to RabbitMQ', [
                 'queue' => $queue,
-                'payload' => $payload,
+                'headers' => $headers,
             ]);
         } catch (\Throwable $e) {
             Log::error('RabbitMQ publish failed', [

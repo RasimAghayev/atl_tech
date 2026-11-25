@@ -3,7 +3,7 @@
 # ===================================================
 
 .DEFAULT_GOAL := help
-.PHONY: help build up down restart logs shell composer test clean
+.PHONY: help build up down restart logs shell composer test clean verify test-integration logs-relay relay-once
 
 # Colors
 BLUE=$(shell tput setaf 4)
@@ -34,7 +34,7 @@ build:
 ## Start development environment
 up:
 	@echo "$(BLUE)Starting development environment...$(NC)"
-	docker-compose up  -d --build nginx  --force-recreate #-d nginx pgsql php redis
+	docker-compose up -d --build nginx relay --force-recreate
 	@echo "$(GREEN)Environment started$(NC)"
 	@echo "$(YELLOW)Application: http://localhost:8000$(NC)"
 	@echo "$(YELLOW)PostgreSQL: localhost:6432$(NC)"
@@ -89,6 +89,31 @@ composer-update:
 ## Run PHP tests
 test:
 	docker-compose exec php ./vendor/bin/phpunit --configuration phpunit.xml
+
+## Docker-first verification gate: build the `test` stage, which runs the
+## full sqlite-backed unit/feature suite at build time and fails the build on
+## any failure. This is the one command that proves "builds and tests pass
+## in Docker" — never trust a host run as verification (CLAUDE.md decision 2).
+verify:
+	docker build --target test -f server/php/Dockerfile -t atl_tech-php-test:local .
+
+## Real-Postgres integration tests (e.g. the outbox FOR UPDATE SKIP LOCKED
+## concurrency proof, which sqlite cannot exercise). Requires `make up` first.
+test-integration:
+	docker-compose run --rm \
+		-e DB_CONNECTION=pgsql \
+		-e DB_HOST=pgsql \
+		-e DB_PORT=5432 \
+		phpunit --configuration phpunit.xml --testsuite=Feature \
+		--filter=OutboxRepositoryPostgresConcurrencyTest
+
+## Tail the outbox relay worker's logs
+logs-relay:
+	docker-compose logs -f relay
+
+## Run a single outbox relay pass and exit (useful for manual draining)
+relay-once:
+	docker-compose run --rm relay php artisan outbox:relay --once
 
 ## Run Laravel Pint (PHP CS Fixer)
 cs-fix:
