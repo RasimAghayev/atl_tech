@@ -21,6 +21,7 @@ class CallEventLog extends Model
     protected $fillable = [
         'call_id',
         'event_type',
+        'idempotency_key',
         'payload',
         'created_at',
     ];

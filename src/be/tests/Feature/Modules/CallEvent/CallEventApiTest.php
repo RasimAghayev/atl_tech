@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\CallEvent;
 
 use App\Modules\CallEvent\Models\CallEventLog;
-use App\Shared\Contracts\EventPublisherInterface;
+use App\Shared\Outbox\Models\OutboxEvent;
+use App\Shared\Outbox\OutboxStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery\MockInterface;
 use Tests\TestCase;
 
 class CallEventApiTest extends TestCase
@@ -23,21 +23,8 @@ class CallEventApiTest extends TestCase
         config(['call-event.api_token' => $this->validToken]);
     }
 
-    /**
-     * Create mock for EventPublisher that expects to be called
-     */
-    private function mockEventPublisher(): void
-    {
-        $this->mock(EventPublisherInterface::class, function (MockInterface $mock) {
-            $mock->expects('publish')
-                ->andReturnNull();
-        });
-    }
-
     public function test_can_submit_call_started_event_successfully(): void
     {
-        $this->mockEventPublisher();
-
         $payload = [
             'call_id' => 'CALL-12345',
             'caller_number' => '+994501234561',
@@ -56,12 +43,18 @@ class CallEventApiTest extends TestCase
             'call_id' => 'CALL-12345',
             'event_type' => 'call_started',
         ]);
+
+        // The outbox row is what proves the transactional-outbox write
+        // happened — the request path never calls RabbitMQ directly anymore.
+        $this->assertDatabaseHas('outbox_events', [
+            'aggregate_id' => 'CALL-12345',
+            'event_type' => 'call_started',
+            'status' => OutboxStatus::Pending->value,
+        ]);
     }
 
     public function test_can_submit_call_ended_event_with_duration(): void
     {
-        $this->mockEventPublisher();
-
         $payload = [
             'call_id' => 'CALL-67890',
             'caller_number' => '+994501234563',
@@ -80,6 +73,56 @@ class CallEventApiTest extends TestCase
         $log = CallEventLog::where('call_id', 'CALL-67890')->first();
         $this->assertNotNull($log);
         $this->assertEquals(300, $log->payload['duration']);
+
+        $outboxEvent = OutboxEvent::where('aggregate_id', 'CALL-67890')->first();
+        $this->assertNotNull($outboxEvent);
+        $this->assertEquals(300, $outboxEvent->payload['duration']);
+        $this->assertSame($log->idempotency_key, $outboxEvent->idempotency_key);
+    }
+
+    public function test_duplicate_submission_is_idempotent(): void
+    {
+        $payload = [
+            'call_id' => 'CALL-DUPE-1',
+            'caller_number' => '+994501234561',
+            'callee_number' => '+994551234562',
+            'event_type' => 'call_started',
+            'timestamp' => '2025-12-04 10:30:00',
+        ];
+
+        $this->withToken($this->validToken)->postJson('/api/v1/call-events', $payload)
+            ->assertStatus(200);
+        $this->withToken($this->validToken)->postJson('/api/v1/call-events', $payload)
+            ->assertStatus(200);
+
+        $this->assertDatabaseCount('call_event_logs', 1);
+        $this->assertDatabaseCount('outbox_events', 1);
+    }
+
+    public function test_can_fetch_call_event_history(): void
+    {
+        $started = [
+            'call_id' => 'CALL-HIST-1',
+            'caller_number' => '+994501234561',
+            'callee_number' => '+994551234562',
+            'event_type' => 'call_started',
+            'timestamp' => '2025-12-04 10:30:00',
+        ];
+        $ended = [
+            ...$started,
+            'event_type' => 'call_ended',
+            'timestamp' => '2025-12-04 10:35:00',
+            'duration' => 300,
+        ];
+
+        $this->withToken($this->validToken)->postJson('/api/v1/call-events', $started)->assertStatus(200);
+        $this->withToken($this->validToken)->postJson('/api/v1/call-events', $ended)->assertStatus(200);
+
+        $response = $this->withToken($this->validToken)
+            ->getJson('/api/v1/call-events/CALL-HIST-1');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'events');
     }
 
     public function test_validation_fails_when_duration_missing_for_call_ended(): void
