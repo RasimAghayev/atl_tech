@@ -8,7 +8,7 @@
     "require": {
         "php": "^8.4",
         "ext-zlib": "*",
-        "darkaonline/l5-swagger": "^11.0",
+        "darkaonline/l5-swagger": "^12.0",
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
